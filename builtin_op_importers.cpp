@@ -3721,6 +3721,34 @@ DEFINE_BUILTIN_OP_IMPORTER(TRT_AveragePool)
     return importAveragePool(ctx, node, inputs);
 }
 
+// Plugin CoordConvAC nodes
+
+DEFINE_BUILTIN_OP_IMPORTER(CoordConv)
+{
+    return importConv(ctx, node, inputs);
+}
+
+DEFINE_BUILTIN_OP_IMPORTER(CoordConvAC)
+{
+    nvinfer1::ITensor* tensor_ptr = &convertToTensor(inputs.at(0), ctx);
+    OnnxAttrs attrs(node, ctx);
+
+    // Populate instanceNormalization plugin properties.
+    const std::string pluginName = "CoordConvAC_TRT";
+    const std::string pluginVersion = "001";
+
+    std::vector<nvinfer1::PluginField> f;
+
+    // Create plugin from registry
+    nvinfer1::IPluginV2* plugin = importPluginFromRegistry(ctx, pluginName, pluginVersion, node.name(), f);
+
+    ASSERT(plugin != nullptr && "CoordConvAddCoords plugin was not found in the plugin registry!",
+        ErrorCode::kUNSUPPORTED_NODE);
+
+    RETURN_FIRST_OUTPUT(ctx->network()->addPluginV2(&tensor_ptr, 1, *plugin));
+}
+
+
 } // namespace
 
 } // namespace onnx2trt
